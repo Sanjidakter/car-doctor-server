@@ -24,28 +24,32 @@ const client = new MongoClient(uri, {
   },
 });
 
-const verifyJWT = (req,res,next) => {
-console.log('hitting verify JWT')
-console.log(req.headers.authorization);
-const authorization = req.headers.authorization;
-if(!authorization){
-  return res.status(401).send({error:true , message: 'unauthorized access'})
-}
-const token = authorization.split(' ')[1];
-console.log('token inside verify JWT',token);
-jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
-  if(error){
-    return res.status(403).send({error:true, message:'unauthorized access'})
+const verifyJWT = (req, res, next) => {
+  console.log("hitting verify JWT");
+  console.log(req.headers.authorization);
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res
+      .status(401)
+      .send({ error: true, message: "unauthorized access" });
   }
-  req.decoded = decoded;
-  next();
-})
-}
+  const token = authorization.split(" ")[1];
+  console.log("token inside verify JWT", token);
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
+    if (error) {
+      return res
+        .status(401)
+        .send({ error: true, message: "unauthorized access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
 
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const serviceCollection = client.db("carDoctorDb").collection("services");
     const bookingCollection = client.db("carDoctorDb").collection("bookings");
@@ -80,10 +84,14 @@ async function run() {
       res.send(result);
     });
 
-    
     // bookings routes
-    app.get("/bookings",verifyJWT, async (req, res) => {
-      console.log('came back after verify');
+    app.get("/bookings", verifyJWT, async (req, res) => {
+      const decoded = req.decoded;
+      console.log("came back after verify", decoded);
+      if (decoded.email !== req.query.email) {
+         return res.status(403).send({error:1, message: 'forbidden access'})
+      }
+
       let query = {};
       if (req.query?.email) {
         query = { email: req.query.email };
